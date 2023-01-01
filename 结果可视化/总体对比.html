@@ -1,0 +1,125 @@
+
+<!DOCTYPE html>
+<html lang="zh-CN" style="height: 100%">
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="height: 100%; margin: 0">
+  <div id="container" style="height: 100%"></div>
+
+  <script type="text/javascript" src="https://fastly.jsdelivr.net/npm/jquery"></script>
+  <script type="text/javascript" src="https://fastly.jsdelivr.net/npm/echarts@5.4.1/dist/echarts.min.js"></script>
+  <script src="http://libs.baidu.com/jquery/2.0.0/jquery.min.js"></script>
+  <script src="https://cdn.bootcss.com/echarts/5.0.2/echarts.min.js"></script>
+
+
+
+  <script type="text/javascript">
+    var dom = document.getElementById('container');
+    var myChart = echarts.init(dom, null, {
+      renderer: 'canvas',
+      useDirtyRect: false
+    });
+    var app = {};
+    var ROOT_PATH = 'http://127.0.0.1:5500/';
+    var option;
+
+    $.getJSON(
+  ROOT_PATH + './total_acc.json',
+
+  function (_rawData) {
+    run(_rawData);
+  }
+);
+function run(_rawData) {
+  const models = [
+    'mobile_vit',
+    'mobile_vit_pretrained',
+    'cnn_vit',
+    'res34_vit',
+    'pure_vit',
+  ];
+  const datasetWithFilters = [];
+  const seriesList = [];
+  echarts.util.each(models, function (model) {
+    var datasetId = 'dataset_' + model;
+    // var datasetId = model;
+
+    datasetWithFilters.push({
+      id: datasetId,
+      fromDatasetId: 'dataset_raw',
+      transform: {
+        type: 'filter',
+        config: {
+          and: [
+            { dimension: 'epoch', gte: 1 },
+            { dimension: 'model', '=': model }
+          ]
+        }
+      }
+    });
+    seriesList.push({
+      type: 'line',
+      datasetId: datasetId,
+      showSymbol: false,
+      name: model,
+      endLabel: {
+        show: true,
+        formatter: function (params) {
+          return params.value[1] + ': ' + params.value[0];
+        }
+      },
+      labelLayout: {
+        moveOverlap: 'shiftY'
+      },
+      emphasis: {
+        focus: 'series'
+      },
+      encode: {
+        x: 'epoch',
+        y: 'acc',
+        label: ['model', 'acc'],
+        itemName: 'epoch',
+        tooltip: ['acc']
+      }
+    });
+  });
+  option = {
+    animationDuration: 10000,
+    dataset: [
+      {
+        id: 'dataset_raw',
+        source: _rawData
+      },
+      ...datasetWithFilters
+    ],
+    title: {
+      text: 'Acc_models'
+    },
+    tooltip: {
+      order: 'valueDesc',
+      trigger: 'axis'
+    },
+    xAxis: {
+      type: 'category',
+      nameLocation: 'middle'
+    },
+    yAxis: {
+      name: 'acc'
+    },
+    grid: {
+      right: 140
+    },
+    series: seriesList
+  };
+  myChart.setOption(option);
+}
+
+    if (option && typeof option === 'object') {
+      myChart.setOption(option);
+    }
+
+    window.addEventListener('resize', myChart.resize);
+  </script>
+</body>
+</html>
